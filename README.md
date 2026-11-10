@@ -131,6 +131,61 @@ Exclave is licensed under the GNU General Public License as published by the Fre
 
 - APK files are located in `.\app\build\outputs\apk\oss\release` (default flavor) or `.\app\build\outputs\apk\legacy\release` (legacy flavor).
 
+## Build a signed APK with GitHub Actions
+
+The `release.yml` workflow signs the APK only when it can find a file named
+`release.keystore` in the repository root and receives the signing values in
+the `LOCAL_PROPERTIES` secret. Do not commit either your keystore or its
+passwords to the repository.
+
+1. Convert your keystore to one line of Base64 text. Run one of these commands
+   on your own computer, replacing the file name if needed:
+
+   ```shell
+   # macOS or Linux
+   base64 < release.keystore | tr -d '\n'
+   ```
+
+   ```powershell
+   # Windows PowerShell
+   [Convert]::ToBase64String([IO.File]::ReadAllBytes("release.keystore"))
+   ```
+
+2. In your GitHub repository, open **Settings** > **Secrets and variables** >
+   **Actions**, select **New repository secret**, and create a secret named
+   `RELEASE_KEYSTORE_BASE64`. Paste the Base64 text from the previous step as
+   its value.
+
+3. Add this step to `.github/workflows/release.yml` before **Gradle Build**.
+   It recreates the required `release.keystore` file only on the GitHub runner:
+
+   ```yaml
+   - name: Restore signing keystore
+     env:
+       RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+     run: printf '%s' "$RELEASE_KEYSTORE_BASE64" | base64 --decode > release.keystore
+   ```
+
+4. Create the `LOCAL_PROPERTIES` secret in the same GitHub page. Its value is
+   the Base64 encoding of these three lines (use your real values):
+
+   ```properties
+   KEYSTORE_PASS=your_keystore_password
+   ALIAS_NAME=your_key_alias
+   ALIAS_PASS=your_key_password
+   ```
+
+   For example, save those lines as `github-local.properties` on your computer,
+   then encode the file with `base64 < github-local.properties | tr -d '\n'`
+   on macOS/Linux, or with the Windows PowerShell command from step 1 after
+   replacing `release.keystore` with `github-local.properties`. Paste the
+   resulting one-line text into the `LOCAL_PROPERTIES` secret.
+
+5. Run **Actions** > **Release Build** > **Run workflow**. The generated APKs
+   are available from the workflow run's **Artifacts** section. Repository
+   secrets are not provided to workflows started from pull requests made from
+   forks, so run a signed build from a branch in your own repository.
+
 ## Acknowledgment
 
 - [Shadowsocks](https://github.com/shadowsocks/shadowsocks-android)
