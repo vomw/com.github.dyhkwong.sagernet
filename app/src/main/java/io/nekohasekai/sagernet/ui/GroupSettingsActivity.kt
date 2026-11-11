@@ -159,6 +159,8 @@ class GroupSettingsActivity(
             frontProxyPreference.setSummary(resources.getString(R.string.disable))
         }
         frontProxyPreference.apply {
+            setEntries(R.array.front_landing_proxy_entry)
+            setEntryValues(R.array.front_landing_proxy_value)
             setOnPreferenceChangeListener { _, newValue ->
                 if (newValue.toString() == "1") {
                     selectProfileForAddFront.launch(
@@ -181,6 +183,8 @@ class GroupSettingsActivity(
             landingProxyPreference.setSummary(resources.getString(R.string.disable))
         }
         landingProxyPreference.apply {
+            setEntries(R.array.front_landing_proxy_entry)
+            setEntryValues(R.array.front_landing_proxy_value)
             setOnPreferenceChangeListener { _, newValue ->
                 if (newValue.toString() == "1") {
                     selectProfileForAddLanding.launch(

@@ -27,11 +27,8 @@ fun parseHttp3(link: String): Http3Bean {
     if (url.path != "/" && url.path != "") error("Not http3 proxy")
 
     return Http3Bean().apply {
-        serverAddress = url.host
-        serverPort = when {
-            !url.hasPort() -> 443
-            else -> url.port
-        }
+        serverAddress = url.host.ifEmpty { error("empty host") }
+        serverPort = url.port.takeIf { it > 0 } ?: 443
         username = url.username
         password = url.password
         name = url.fragment
@@ -43,7 +40,7 @@ fun parseHttp3(link: String): Http3Bean {
 
 fun Http3Bean.toUri(): String {
     val builder = Libexclavecore.newURL("quic").apply {
-        setHostPort(serverAddress, serverPort)
+        setHostPort(serverAddress.ifEmpty { error("empty server address") }, serverPort)
         if (name.isNotEmpty()) {
             fragment = name
         }

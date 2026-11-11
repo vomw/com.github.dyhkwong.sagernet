@@ -57,12 +57,9 @@ class StatsBar @JvmOverloads constructor(
         return behavior
     }
 
-    private val setNavigationBarColor = DataStore.experimentalFlagsProperties.getBooleanProperty("setNavigationBarColor")
-
     override fun performShow() {
         super.performShow()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !setNavigationBarColor
-            && isNavigationBarAtBottom(this)) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && isNavigationBarAtBottom(this)) {
             val activity = context.findActivity<MainActivity>()!!
             val insetController = WindowInsetsControllerCompat(activity.window, activity.window.decorView)
             insetController.isAppearanceLightNavigationBars =
@@ -72,8 +69,7 @@ class StatsBar @JvmOverloads constructor(
 
     override fun performHide() {
         super.performHide()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !setNavigationBarColor
-            && isNavigationBarAtBottom(this)) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && isNavigationBarAtBottom(this)) {
             val activity = context.findActivity<MainActivity>()!!
             val insetController = WindowInsetsControllerCompat(activity.window, activity.window.decorView)
             insetController.isAppearanceLightNavigationBars = !Theme.usingNightMode()
@@ -93,8 +89,6 @@ class StatsBar @JvmOverloads constructor(
             return navigationBar.bottom > 0 && navigationBar.left == 0 && navigationBar.right == 0
         }
 
-        private val setNavigationBarColor = DataStore.experimentalFlagsProperties.getBooleanProperty("setNavigationBarColor")
-
         override fun onNestedScroll(
             coordinatorLayout: CoordinatorLayout, child: BottomAppBar, target: View,
             dxConsumed: Int, dyConsumed: Int, dxUnconsumed: Int, dyUnconsumed: Int,
@@ -111,8 +105,7 @@ class StatsBar @JvmOverloads constructor(
                 type,
                 consumed
             )
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !setNavigationBarColor
-                && isNavigationBarAtBottom(child)) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && isNavigationBarAtBottom(child)) {
                 val activity = child.context.findActivity<MainActivity>()!!
                 val insetController = WindowInsetsControllerCompat(activity.window, activity.window.decorView)
                 when {

@@ -27,11 +27,8 @@ fun parseHttp(link: String): HttpBean {
     if (url.path != "/" && url.path != "") error("Not http proxy")
 
     return HttpBean().apply {
-        serverAddress = url.host
-        serverPort = when {
-            !url.hasPort() -> if (url.scheme == "https") 443 else 80
-            else -> url.port
-        }
+        serverAddress = url.host.ifEmpty { error("empty host") }
+        serverPort = url.port.takeIf { it > 0 } ?: if (url.scheme == "https") 443 else 80
         username = url.username
         password = url.password
         name = url.fragment
@@ -50,7 +47,7 @@ fun HttpBean.toUri(): String? {
     if (type != "tcp" || headerType != "none") error("unsupported http with v2ray transport")
 
     val builder = Libexclavecore.newURL(if (security == "tls") "https" else "http").apply {
-        setHostPort(serverAddress, serverPort)
+        setHostPort(serverAddress.ifEmpty { error("empty server address") }, serverPort)
         if (name.isNotEmpty()) {
             fragment = name
         }

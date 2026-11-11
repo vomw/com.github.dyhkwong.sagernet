@@ -61,20 +61,14 @@ import io.nekohasekai.sagernet.utils.PackageCache
 import io.nekohasekai.sagernet.utils.Theme
 import kotlinx.coroutines.DEBUG_PROPERTY_NAME
 import kotlinx.coroutines.DEBUG_PROPERTY_VALUE_ON
-import libexclavecore.AndroidCAStore
 import libexclavecore.Libexclavecore
 import libexclavecore.UidDumper
-import org.bouncycastle.util.io.pem.PemObject
-import org.bouncycastle.util.io.pem.PemWriter
-import java.io.StringWriter
 import java.net.Inet6Address
 import java.net.InetSocketAddress
-import java.security.KeyStore
 import androidx.work.Configuration as WorkConfiguration
 
 class SagerNet : Application(),
     UidDumper,
-    AndroidCAStore,
     WorkConfiguration.Provider {
 
     override fun attachBaseContext(base: Context) {
@@ -92,26 +86,6 @@ class SagerNet : Application(),
         DataStore.init()
         updateNotificationChannels()
         Seq.setContext(this)
-
-        if (DataStore.goDebug.isNotEmpty()) {
-            // This is set after Go runtime initialization. Therefore, not all GODEBUG can take effect.
-            Libexclavecore.setenv("GODEBUG", DataStore.goDebug)
-        }
-        if (DataStore.environmentVariables.isNotEmpty()) {
-            for (variable in DataStore.environmentVariables.split("\n")) {
-                if (!variable.contains("=")) continue
-                Libexclavecore.setenv(
-                    variable.substringBefore("="),
-                    variable.substringAfter("=")
-                )
-            }
-        }
-
-        if (DataStore.getInstalledPackagesInited) {
-            runOnDefaultDispatcher {
-                PackageCache.register()
-            }
-        }
 
         val processName = if (Build.VERSION.SDK_INT >= 28) {
             getProcessName()
@@ -133,7 +107,7 @@ class SagerNet : Application(),
             }
         }
 
-        if (!isMainProcess) runOnDefaultDispatcher {
+        if (isMainProcess) runOnDefaultDispatcher {
             runCatching {
                 SubscriptionUpdater.reconfigureUpdater()
             }
@@ -142,14 +116,12 @@ class SagerNet : Application(),
         Libexclavecore.setenv("exclave.conf.geoloader", "memconservative")
         externalAssets.mkdirs()
         Libexclavecore.initializeV2Ray(
-            externalAssets.canonicalPath + "/",
+            filesDir.absolutePath + "/",
+            externalAssets.absolutePath + "/",
             "exclave-core/",
         )
 
         try {
-            if (DataStore.providerRootCA == RootCAProvider.ANDROID) {
-                Libexclavecore.registerAndroidCAStore(this)
-            }
             Libexclavecore.updateSystemRoots(DataStore.providerRootCA)
         } catch (e: Exception) {
             Toast.makeText(this, e.readableMessage, Toast.LENGTH_LONG).show()
@@ -166,23 +138,6 @@ class SagerNet : Application(),
                 .penaltyLog()
                 .build()
         )
-    }
-
-    override fun certificates(): ByteArray {
-        try {
-            val keyStore = KeyStore.getInstance("AndroidCAStore")
-            keyStore.load(null, null)
-            val stringWriter = StringWriter()
-            val pemWriter = PemWriter(stringWriter)
-            val aliases = keyStore.aliases()
-            while (aliases.hasMoreElements()) {
-                pemWriter.writeObject(PemObject("CERTIFICATE", keyStore.getCertificate(aliases.nextElement()).encoded))
-            }
-            pemWriter.close()
-            return stringWriter.toString().toByteArray()
-        } catch (e: Exception) {
-            throw e
-        }
     }
 
     @RequiresApi(Build.VERSION_CODES.Q)
@@ -262,7 +217,6 @@ class SagerNet : Application(),
         val power by lazy { application.getSystemService<PowerManager>()!! }
         val wifi by lazy { application.getSystemService<WifiManager>()!! }
         val location by lazy { application.getSystemService<LocationManager>()!! }
-        val locale by lazy { application.getSystemService<LocaleManager>()!! }
 
         val currentProfile get() = SagerDatabase.proxyDao.getById(DataStore.selectedProxy)
 

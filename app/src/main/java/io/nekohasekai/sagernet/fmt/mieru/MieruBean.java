@@ -128,6 +128,14 @@ public class MieruBean extends AbstractBean {
         }
     }
 
+    @Override
+    public String network() {
+        if (protocol == PROTOCOL_UDP) {
+            return "udp";
+        }
+        return "tcp";
+    }
+
     @NotNull
     @Override
     public MieruBean clone() {

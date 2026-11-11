@@ -29,10 +29,10 @@ import io.nekohasekai.sagernet.fmt.juicity.parseJuicity
 import io.nekohasekai.sagernet.fmt.mieru.parseMieru
 import io.nekohasekai.sagernet.fmt.naive.parseNaive
 import io.nekohasekai.sagernet.fmt.parseBackup
-import io.nekohasekai.sagernet.fmt.shadowquic.parseShadowQUIC
 import io.nekohasekai.sagernet.fmt.shadowsocks.parseShadowsocks
 import io.nekohasekai.sagernet.fmt.shadowsocksr.parseShadowsocksR
 import io.nekohasekai.sagernet.fmt.socks.parseSOCKS
+import io.nekohasekai.sagernet.fmt.ssh.parseSSH
 import io.nekohasekai.sagernet.fmt.trusttunnel.parseTrustTunnel
 import io.nekohasekai.sagernet.fmt.tuic5.parseTuic
 import io.nekohasekai.sagernet.fmt.v2ray.parseV2Ray
@@ -53,8 +53,8 @@ fun String.decodeBase64(): String {
 }
 
 fun parseShareLinks(text: String): List<AbstractBean> {
-    val linksByLine = text.split('\n').mapNotNull { it.trim().takeIf { !it.startsWith('#') } }
-    val links = linksByLine.flatMap { it.trim().split(' ') }
+    val links = text.split('\n').flatMap { it.trim().split(' ') }
+    val linksByLine = text.split('\n').map { it.trim() }
 
     val entities = ArrayList<AbstractBean>()
     val entitiesByLine = ArrayList<AbstractBean>()
@@ -64,7 +64,8 @@ fun parseShareLinks(text: String): List<AbstractBean> {
             || startsWith("socks4://", ignoreCase = true)
             || startsWith("socks4a://", ignoreCase = true)
             || startsWith("socks5://", ignoreCase = true)
-            || startsWith("socks5h://", ignoreCase = true)) {
+            || startsWith("socks5h://", ignoreCase = true)
+            || startsWith("socks+tls://", ignoreCase = true)) {
             runCatching {
                 entities.add(parseSOCKS(this))
             }
@@ -121,13 +122,13 @@ fun parseShareLinks(text: String): List<AbstractBean> {
             runCatching {
                 entities.add(parseAnyTLS(this))
             }
+        } else if (startsWith("ssh://", ignoreCase = true)) {
+            runCatching {
+                entities.add(parseSSH(this))
+            }
         } else if (startsWith("tt://", ignoreCase = true)) {
             runCatching {
                 entities.addAll(parseTrustTunnel(this))
-            }
-        } else if (startsWith("sq://", ignoreCase = true) || startsWith("shadowquic://", ignoreCase = true)) {
-            runCatching {
-                entities.add(parseShadowQUIC(this))
             }
         }
     }

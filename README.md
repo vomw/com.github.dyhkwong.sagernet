@@ -25,12 +25,9 @@ Some supported protocols:
 - VMess (with various optional sub-protocols)
 - VLESS (with various optional sub-protocols)
 - WireGuard (TCP and UDP only)
-- MASQUE (a.k.a. CONNECT-IP, TCP and UDP only)
 - TrustTunnel (no ICMP echo support)
-- Snell v4 and Snell v6
-- ShadowQUIC
 - SSH proxy ("dynamic port forwarding")
-- HTTP CONNECT tunnel (HTTP/1.1, HTTP/1.1 with TLS, HTTP/2 and HTTP/3, with CONNECT-UDP support)
+- HTTP CONNECT tunnel (HTTP/1.1, HTTP/1.1 with TLS, HTTP/2 and HTTP/3)
 - SOCKS4, SOCKS4A and SOCKS5
 
 </details>
@@ -45,15 +42,13 @@ Some supported protocols:
 
   SHA-256 hash of the signing certificate: `e9fe39e1ce254c50c2f9470a757b378c0b7cc536119867f7691405b592e6994b`
 
-  The default flavor (versions without `-legacy` suffix) supports Android 7.0+. The legacy flavor (versions with `-legacy` suffix, with some Gradle dependencies pinned to old versions) supports Android 5.0+. The legacy flavor is for old devices only and using it on new devices may lead to [unexpected behaviors](https://issuetracker.google.com/issues/519796838). The support for the legacy flavor is on a best-efforts basis and may be ended at any time.
-
 - NaïveProxy Plugin
 
   [Download from GitHub releases](https://github.com/klzgrad/naiveproxy/releases)
 
   It is distributed and signed by the upstream author.
 
-Starting in ~~September 2026~~ 2027, Google will [block apps from "sideloading"](https://developer.android.com/developer-verification) on [certified Android devices](https://www.android.com/certified/partners/). If you are a user who values digital freedom, we need your voice to [express opposition](https://keepandroidopen.org/). Your support will not only help save this app, but also help defend software freedom and open distribution.
+Starting in September 2026, Google will [block apps from "sideloading"](https://developer.android.com/developer-verification) on [certified Android devices](https://www.android.com/certified/partners/). If you are a user who values digital freedom, we need your voice to [express opposition](https://keepandroidopen.org/). Your support will not only help save this app, but also help defend software freedom and open distribution.
 
 ## Explanation of terms
 
@@ -107,8 +102,8 @@ Exclave is licensed under the GNU General Public License as published by the Fre
 
 ## Build from source
 
-- Install and configure JDK 21, Go 1.27 and Go Mobile.
-- Install and configure Android SDK Platform 37.2, Android SDK Build-Tools 37.0.0, Android SDK Platform-Tools and Android NDK r30 through Android Studio or Android SDK Command-line Tools.
+- Install and configure JDK 21, Go 1.26 and Go Mobile.
+- Install and configure Android SDK Platform 37.0, Android SDK Build-Tools 37.0.0, Android SDK Platform-Tools and Android NDK r29 through Android Studio or Android SDK Command-line Tools.
 - Replace `release.keystore` with your own. It can be generated with Java `keytool`.
 - Create a new `local.properties` file if it does not exist. Append the following lines to `local.properties`.
 ```
@@ -121,70 +116,15 @@ Exclave is licensed under the GNU General Public License as published by the Fre
 
   - Build libexclavecore: `./run lib core` or `./library/core/build.sh`
   - Download assets: `./gradlew :app:downloadAssets`, or update assets to the latest version: `./gradlew :app:updateAssets`
-  - Build Exclave: `./gradlew :app:assembleOssRelease` (default flavor) or `./gradlew :app:assembleLegacyRelease` (legacy flavor)
+  - Build Exclave: `./gradlew :app:assembleOssRelease`
 
 - Windows (x64):
 
-  - Build libexclavecore: `.\library\core\build.bat`
-  - Download assets: `.\gradlew.bat :app:downloadAssets`, or update assets to the latest version: `.\gradlew.bat :app:updateAssets`
-  - Build Exclave: `.\gradlew.bat :app:assembleOssRelease` (default flavor) or `.\gradlew.bat :app:assembleLegacyRelease` (legacy flavor)
+  - Build libexclavecore: `./library/core/build.bat`
+  - Download assets: `./gradlew.bat :app:downloadAssets`, or update assets to the latest version: `./gradlew.bat :app:updateAssets`
+  - Build Exclave: `./gradlew.bat :app:assembleOssRelease`
 
-- APK files are located in `.\app\build\outputs\apk\oss\release` (default flavor) or `.\app\build\outputs\apk\legacy\release` (legacy flavor).
-
-## Build a signed APK with GitHub Actions
-
-The `release.yml` workflow signs the APK only when it can find a file named
-`release.keystore` in the repository root and receives the signing values in
-the `LOCAL_PROPERTIES` secret. Do not commit either your keystore or its
-passwords to the repository.
-
-1. Convert your keystore to one line of Base64 text. Run one of these commands
-   on your own computer, replacing the file name if needed:
-
-   ```shell
-   # macOS or Linux
-   base64 < release.keystore | tr -d '\n'
-   ```
-
-   ```powershell
-   # Windows PowerShell
-   [Convert]::ToBase64String([IO.File]::ReadAllBytes("release.keystore"))
-   ```
-
-2. In your GitHub repository, open **Settings** > **Secrets and variables** >
-   **Actions**, select **New repository secret**, and create a secret named
-   `RELEASE_KEYSTORE_BASE64`. Paste the Base64 text from the previous step as
-   its value.
-
-3. Add this step to `.github/workflows/release.yml` before **Gradle Build**.
-   It recreates the required `release.keystore` file only on the GitHub runner:
-
-   ```yaml
-   - name: Restore signing keystore
-     env:
-       RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
-     run: printf '%s' "$RELEASE_KEYSTORE_BASE64" | base64 --decode > release.keystore
-   ```
-
-4. Create the `LOCAL_PROPERTIES` secret in the same GitHub page. Its value is
-   the Base64 encoding of these three lines (use your real values):
-
-   ```properties
-   KEYSTORE_PASS=your_keystore_password
-   ALIAS_NAME=your_key_alias
-   ALIAS_PASS=your_key_password
-   ```
-
-   For example, save those lines as `github-local.properties` on your computer,
-   then encode the file with `base64 < github-local.properties | tr -d '\n'`
-   on macOS/Linux, or with the Windows PowerShell command from step 1 after
-   replacing `release.keystore` with `github-local.properties`. Paste the
-   resulting one-line text into the `LOCAL_PROPERTIES` secret.
-
-5. Run **Actions** > **Release Build** > **Run workflow**. The generated APKs
-   are available from the workflow run's **Artifacts** section. Repository
-   secrets are not provided to workflows started from pull requests made from
-   forks, so run a signed build from a branch in your own repository.
+- APK files are located in `./app/build/outputs/apk/oss/release`
 
 ## Acknowledgment
 

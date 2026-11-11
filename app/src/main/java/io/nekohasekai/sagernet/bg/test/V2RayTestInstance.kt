@@ -66,14 +66,15 @@ class V2RayTestInstance(profile: ProxyEntity, val link: String, val timeout: Int
 
     override suspend fun init() {
         super.init()
+        v2rayPoint.withProtect(protectPath)
         v2rayPoint.withLocalResolver(this)
-        v2rayPoint.withAlternativeSystemDialer(protectPath)
         DefaultNetworkListener.start(this) {
             underlyingNetwork = it
         }
     }
 
     override fun close() {
+        v2rayPoint.withLocalResolver(null)
         runOnDefaultDispatcher {
             DefaultNetworkListener.stop(this)
         }

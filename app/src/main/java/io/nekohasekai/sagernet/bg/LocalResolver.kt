@@ -23,7 +23,6 @@ import android.net.Network
 import android.os.Build
 import android.os.CancellationSignal
 import androidx.annotation.RequiresApi
-import io.nekohasekai.sagernet.SagerNet
 import io.nekohasekai.sagernet.ktx.tryResume
 import io.nekohasekai.sagernet.ktx.tryResumeWithException
 import kotlinx.coroutines.Dispatchers
@@ -38,16 +37,6 @@ import kotlin.coroutines.suspendCoroutine
 interface LocalResolver : LocalResolver {
 
     var underlyingNetwork: Network?
-
-    private val instance: DnsResolver?
-        get() = when {
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.CINNAMON_BUN ->
-                DnsResolver(SagerNet.application, null)
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q ->
-                @Suppress("DEPRECATION")
-                DnsResolver.getInstance()
-            else -> null
-        }
 
     override fun supportExchange(): Boolean {
         return Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
@@ -84,7 +73,7 @@ interface LocalResolver : LocalResolver {
                         else -> null
                     }
                     if (type != null) {
-                        instance!!.query(
+                        DnsResolver.getInstance().query(
                             underlyingNetwork,
                             domain,
                             type,
@@ -94,7 +83,7 @@ interface LocalResolver : LocalResolver {
                             callback
                         )
                     } else {
-                        instance!!.query(
+                        DnsResolver.getInstance().query(
                             underlyingNetwork,
                             domain,
                             DnsResolver.FLAG_NO_RETRY,
@@ -150,7 +139,7 @@ interface LocalResolver : LocalResolver {
                         continuation.tryResumeWithException(error)
                     }
                 }
-                instance!!.rawQuery(
+                DnsResolver.getInstance().rawQuery(
                     underlyingNetwork,
                     message,
                     DnsResolver.FLAG_NO_RETRY,

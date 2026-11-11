@@ -41,7 +41,6 @@ import io.nekohasekai.sagernet.SagerNet
 import io.nekohasekai.sagernet.database.DataStore
 import io.nekohasekai.sagernet.databinding.LayoutProbeCertBinding
 import io.nekohasekai.sagernet.ktx.Logs
-import io.nekohasekai.sagernet.ktx.app
 import io.nekohasekai.sagernet.ktx.dp2px
 import io.nekohasekai.sagernet.ktx.onMainDispatcher
 import io.nekohasekai.sagernet.ktx.runOnDefaultDispatcher
@@ -86,39 +85,28 @@ class ProbeCertActivity : ThemedActivity() {
             setHomeAsUpIndicator(R.drawable.ic_navigation_close)
         }
 
-        binding.probeCertServer.setText(DataStore.certProberServerAddress)
-        binding.probeCertServerPort.setText(DataStore.certProberServerPort.toString())
-        binding.probeCertServerName.setText(DataStore.certProberSNI)
-        binding.probeCertProtocol.setSelection(DataStore.certProberProtocol)
-        binding.probeCertAlpn.setText(DataStore.certProberALPN)
-        binding.certHashType.setSelection(DataStore.certProberHashType)
-
+        binding.probeCertServer.setText("example.com")
+        binding.probeCertServerPort.setText("443")
+        binding.probeCertServerName.setText("example.com")
         binding.probeCertServer.doAfterTextChanged { text ->
             binding.probeCertServerName.setText(text)
         }
-        binding.probeCertProtocol.post {
-            binding.probeCertProtocol.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-                override fun onItemSelected(
-                    parent: AdapterView<*>?, view: View?, position: Int, id: Long
-                ) {
-                    when (position) {
-                        0 -> binding.probeCertAlpn.setText("h2,http/1.1")
-                        1 -> binding.probeCertAlpn.setText("h3")
-                        else -> error("unknown protocol")
-                    }
+        binding.probeCertAlpn.setText("h2,http/1.1")
+        binding.probeCertProtocol.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(
+                parent: AdapterView<*>?, view: View?, position: Int, id: Long
+            ) {
+                when (position) {
+                    0 -> binding.probeCertAlpn.setText("h2,http/1.1")
+                    1 -> binding.probeCertAlpn.setText("h3")
+                    else -> error("unknown protocol")
                 }
-                override fun onNothingSelected(parent: AdapterView<*>?) {
-                }
+            }
+            override fun onNothingSelected(parent: AdapterView<*>?) {
             }
         }
 
         binding.probeCert.setOnClickListener {
-            DataStore.certProberServerAddress = binding.probeCertServer.text.toString()
-            DataStore.certProberServerPort = binding.probeCertServerPort.text.toString().toInt()
-            DataStore.certProberSNI = binding.probeCertServerName.text.toString()
-            DataStore.certProberALPN = binding.probeCertAlpn.text.toString()
-            DataStore.certProberProtocol = binding.probeCertProtocol.selectedItemPosition
-            DataStore.certProberHashType = binding.certHashType.selectedItemPosition
             probeCert()
         }
 
@@ -171,7 +159,6 @@ class ProbeCertActivity : ThemedActivity() {
                 AlertDialog.Builder(this)
                     .setTitle(R.string.certificates)
                     .setView(NestedScrollView(this).apply {
-                        layoutDirection = View.LAYOUT_DIRECTION_LTR
                         setPadding(dp2px(16), dp2px(16), dp2px(16), 0)
                         addView( HorizontalScrollView(this@ProbeCertActivity).apply {
                             addView(TextView(this@ProbeCertActivity).apply {
@@ -215,7 +202,7 @@ class ProbeCertActivity : ThemedActivity() {
         runOnDefaultDispatcher {
             val certProber = Libexclavecore.newCertProber().apply {
                 if (SagerNet.started && DataStore.startedProfile > 0) {
-                    useUDS(app.cacheDir.toString() + "/ipc.sock")
+                    useUDS(SagerNet.deviceStorage.noBackupFilesDir.toString() + "/ipc.sock")
                 }
             }
             val result = when (binding.probeCertProtocol.selectedItemPosition) {
