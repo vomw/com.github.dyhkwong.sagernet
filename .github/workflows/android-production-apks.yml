@@ -51,9 +51,17 @@ jobs:
           java-version: 21
           cache: gradle
 
-      - name: Set up Android SDK
+      - name: Verify hosted Android SDK
         run: |
-          sdkmanager --install "platforms;android-37" "build-tools;37.0.0" "platform-tools"
+          test -n "${ANDROID_HOME:-}"
+          for platform_dir in "$ANDROID_HOME/platforms/android-37" "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37.1" "$ANDROID_HOME/platforms/android-37.2"; do
+            if test -d "$platform_dir"; then
+              echo "Using Android platform: $platform_dir"
+              break
+            fi
+          done
+          test -n "${platform_dir:-}" && test -d "$platform_dir"
+          test -x "$ANDROID_HOME/build-tools/37.0.0/apksigner"
 
       - name: Set up Android NDK
         id: setup-ndk
