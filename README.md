@@ -128,7 +128,9 @@ Exclave is licensed under the GNU General Public License as published by the Fre
 
 ## Build signed Android APKs with GitHub Actions
 
-The independent [Android production APK workflow](.github/workflows/android-production-apks.yml) builds the `ossRelease` app for `armeabi-v7a`, `arm64-v8a`, `x86`, and `x86_64` in separate jobs. It builds the Go native library, downloads the required assets, signs the APK with your keystore, verifies the signature, and uploads one APK per ABI. Each uploaded APK is named `<application-id>-<version-name>-<version-code>-<abi>.apk`; the application ID and per-ABI version code are read from Gradle's generated metadata.
+The independent [Fork Android production APK workflow](.github/workflows/android-production-apks.yml) builds the `ossRelease` app for `armeabi-v7a`, `arm64-v8a`, `x86`, and `x86_64` in separate jobs. In GitHub Actions only, it changes the application ID from `com.github.dyhkwong.sagernet` to `com.github.dyhkwong.sagernet.vomw`, appends `.vomw` to the launcher label, and updates the app's shortcut and plugin-host package references. This gives the fork distinct Android storage, permissions, provider authorities, and launcher identity, so it can be installed beside the original app. The repository source remains unchanged by a workflow run.
+
+It then builds the Go native library, downloads the required assets, signs the APK with your keystore, verifies the signature, and uploads one APK per ABI. Each uploaded APK is named `<application-id>-<version-name>-<version-code>-<abi>.apk`; the application ID and per-ABI version code are read from Gradle's generated metadata.
 
 Before running it, add these repository secrets in GitHub: open the repository, select **Settings** > **Secrets and variables** > **Actions**, select **New repository secret**, enter the name below, and paste the corresponding value. Do not put the keystore or passwords in the workflow file or commit them to the repository.
 
