@@ -126,6 +126,41 @@ Exclave is licensed under the GNU General Public License as published by the Fre
 
 - APK files are located in `./app/build/outputs/apk/oss/release`
 
+## Build signed Android APKs with GitHub Actions
+
+The independent [Android production APK workflow](.github/workflows/android-production-apks.yml) builds the `ossRelease` app for `armeabi-v7a`, `arm64-v8a`, `x86`, and `x86_64` in separate jobs. It builds the Go native library, downloads the required assets, signs the APK with your keystore, verifies the signature, and uploads one APK per ABI. Each uploaded APK is named `<application-id>-<version-name>-<version-code>-<abi>.apk`; the application ID and per-ABI version code are read from Gradle's generated metadata.
+
+Before running it, add these repository secrets in GitHub: open the repository, select **Settings** > **Secrets and variables** > **Actions**, select **New repository secret**, enter the name below, and paste the corresponding value. Do not put the keystore or passwords in the workflow file or commit them to the repository.
+
+| Secret | Required value |
+| --- | --- |
+| `RELEASE_KEYSTORE_BASE64` | A single-line Base64 encoding of the signing keystore. The workflow decodes it to the repository-root `release.keystore` before Gradle runs. |
+| `LOCAL_PROPERTIES` | A single-line Base64 encoding of a UTF-8 properties file containing `KEYSTORE_PASS`, `ALIAS_NAME`, and `ALIAS_PASS`. Gradle decodes this value and uses it to configure the release signing key. |
+
+Create the properties file without committing it:
+
+```properties
+KEYSTORE_PASS=your_keystore_password
+ALIAS_NAME=your_key_alias
+ALIAS_PASS=your_key_password
+```
+
+On macOS or Linux, create the two secret values from your local keystore and properties file:
+
+```sh
+base64 < release.keystore | tr -d '\n'
+base64 < signing.properties | tr -d '\n'
+```
+
+On Windows PowerShell, use:
+
+```powershell
+[Convert]::ToBase64String([IO.File]::ReadAllBytes('release.keystore'))
+[Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes([IO.File]::ReadAllText('signing.properties')))
+```
+
+Paste the first result into `RELEASE_KEYSTORE_BASE64` and the second into `LOCAL_PROPERTIES`. The workflow sets `LOCAL_PROPERTIES` as an environment variable for Gradle and restores `release.keystore` from `RELEASE_KEYSTORE_BASE64`; no other user-provided environment variables are required. To run it, open GitHub's **Actions** tab, select **Android production APKs**, select **Run workflow**, then download the four named artifacts from the completed run.
+
 ## Acknowledgment
 
 - [Shadowsocks](https://github.com/shadowsocks/shadowsocks-android)

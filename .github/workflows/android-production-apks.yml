@@ -1,0 +1,105 @@
+name: Android production APKs
+
+on:
+  push:
+    branches:
+      - dev*
+    paths:
+      - "app/**"
+      - "buildSrc/**"
+      - "library/**"
+      - "bin/**"
+      - "version.properties"
+      - "gradle/**"
+      - "*.gradle.kts"
+      - ".github/workflows/android-production-apks.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build ${{ matrix.abi }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        abi: [armeabi-v7a, arm64-v8a, x86, x86_64]
+    env:
+      LOCAL_PROPERTIES: ${{ secrets.LOCAL_PROPERTIES }}
+      RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: 1.26.4
+          cache-dependency-path: library/core/go.sum
+
+      - name: Set up Go Mobile
+        run: |
+          go install golang.org/x/mobile/cmd/gomobile@v0.0.0-20260602190626-68735029466e
+          go install golang.org/x/mobile/cmd/gobind@v0.0.0-20260602190626-68735029466e
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+
+      - name: Set up Android SDK
+        run: |
+          sdkmanager --install "platforms;android-37" "build-tools;37.0.0" "platform-tools"
+
+      - name: Set up Android NDK
+        id: setup-ndk
+        uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r29
+
+      - name: Restore signing keystore
+        run: |
+          test -n "$RELEASE_KEYSTORE_BASE64"
+          printf '%s' "$RELEASE_KEYSTORE_BASE64" | base64 --decode > release.keystore
+          test -s release.keystore
+          chmod 600 release.keystore
+
+      - name: Build native library
+        env:
+          ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
+        run: ./run lib core
+
+      - name: Build signed production APKs
+        run: |
+          test -n "$LOCAL_PROPERTIES"
+          echo "sdk.dir=${ANDROID_HOME}" > local.properties
+          ./gradlew --no-daemon :app:downloadAssets :app:assembleOssRelease
+
+      - name: Select and name signed APK
+        id: package
+        env:
+          ABI: ${{ matrix.abi }}
+        run: |
+          metadata=app/build/outputs/apk/oss/release/output-metadata.json
+          test -f "$metadata"
+          application_id=$(jq -er '.applicationId' "$metadata")
+          apk_data=$(jq -er --arg abi "$ABI" '[.elements[] | select(.filters[]? | .filterType == "ABI" and .value == $abi)] | if length == 1 then .[0] else error("expected exactly one APK for " + $abi) end | [.outputFile, .versionName, .versionCode] | @tsv' "$metadata")
+          IFS=$'\t' read -r output_file version_name version_code <<< "$apk_data"
+          source_apk="app/build/outputs/apk/oss/release/$output_file"
+          test -f "$source_apk"
+          filename="${application_id}-${version_name}-${version_code}-${ABI}.apk"
+          mkdir -p dist
+          cp "$source_apk" "dist/$filename"
+          "$ANDROID_HOME/build-tools/37.0.0/apksigner" verify --verbose --print-certs "dist/$filename"
+          echo "filename=$filename" >> "$GITHUB_OUTPUT"
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ steps.package.outputs.filename }}
+          path: dist/${{ steps.package.outputs.filename }}
+          if-no-files-found: error
